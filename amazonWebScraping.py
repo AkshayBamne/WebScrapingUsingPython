@@ -1,32 +1,40 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
-from openpyxl import Workbook
-from openpyxl import load_workbook
+from selenium import webdriver # type: ignore
+from selenium.webdriver.common.by import By # type: ignore
+from openpyxl import Workbook # type: ignore
+from openpyxl import load_workbook # type: ignore
 import smtplib
 from email.message import EmailMessage
 from email import encoders
+from selenium.webdriver.chrome.options import Options
+import os
 
-# opt = Options()
-# opt.add_argument("--headless")
-# driver = webdriver.Chrome(ChromeDriverManager().install(),chrome_options = opt)
-driver = webdriver.Chrome(ChromeDriverManager().install())
+# Create an instance of Options
+options = Options()
+
+# Add your desired options
+options.add_argument("--headless")  # Run in headless mode
+options.add_argument("--disable-gpu")  # Disable GPU usage
+options.add_argument("--no-sandbox")  # Bypass OS security model
+options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+
+# Pass the options to the WebDriver
+driver = webdriver.Chrome(options=options)
+
 driver.maximize_window()
 driver.get("https://www.amazon.in/")
 driver.implicitly_wait(20)
 
 driver.find_element(By.XPATH,"//input[contains(@id,'search') and @type='text']").send_keys("Samsung phones")
 driver.find_element(By.XPATH,"//input[@value='Go']").click()
-driver.find_element(By.XPATH,"//*[text()='Brand']/following::*[@class='a-icon a-icon-checkbox'][1]").click()
-phoneNames = driver.find_elements(By.XPATH,"//span[contains(@class,'a-color-base a-text-normal')]")
+driver.find_element(By.XPATH,"//*[text()='Brands']/following::*[@class='a-icon a-icon-checkbox'][1]").click()
+phoneNames = driver.find_elements(By.XPATH,"//a[contains(@class,'a-link-normal s-line-clamp-2 s-link-style a-text-normal')]/child::h2")
 prices = driver.find_elements(By.XPATH,"//*[@class='a-section']//child::*[contains(@class,'price-whole')]")
 
 phoneList = []
 priceList = []
 for phone in phoneNames:
 	# print(phone.text)
-	phoneList.append(phone.text)
+	phoneList.append(phone.get_attribute("aria-label"))
 
 print("*"*50)
 
@@ -46,7 +54,21 @@ sh1 = wb.active
 sh1.append(['Phone Name','Prices'])
 for x in list(finalList):
 	sh1.append(x)
-wb.save("FinalRecords.xlsx")	
+
+# Get the current working directory
+current_path = os.getcwd()
+print("Current Working Directory:", current_path)
+try:
+    wb.save(current_path + "\FinalRecords.xlsx")
+    print("Workbook saved successfully!")
+except PermissionError:
+    # Handle the error by using a different filename
+    new_file_path = current_path+"\FinalRecords_backup.xlsx"
+    try:
+        wb.save(new_file_path)
+        print(f"Original file could not be saved. Saved as {new_file_path} instead.")
+    except PermissionError:
+        print("PermissionError: Unable to save the file. Please check file permissions and ensure it is not in use by another application.")	
 
 driver.quit()
 
